@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Refresh Token 生成器</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      line-height: 1.6;
+      padding: 20px;
+    }
+    .container { max-width: 720px; margin: 0 auto; }
+    h1 { text-align: center; color: #1a73e8; margin-bottom: 8px; font-size: 24px; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 24px; font-size: 14px; }
+    .card { background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .card h2 { font-size: 16px; color: #1a73e8; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .step-badge { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 50%; background: #1a73e8; color: #fff; font-size: 14px; font-weight: 600; flex-shrink: 0; }
+    label { display: block; font-weight: 500; margin-bottom: 6px; font-size: 14px; }
+    input, select, textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; font-family: inherit; }
+    input:focus, textarea:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,0.1); }
+    .field { margin-bottom: 14px; }
+    .hint { font-size: 12px; color: #888; margin-top: 4px; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+    .btn-primary { background: #1a73e8; color: #fff; }
+    .btn-primary:hover { background: #1557b0; }
+    .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+    .btn-success { background: #34a853; color: #fff; }
+    .btn-success:hover { background: #2d8e47; }
+    .btn-copy { background: #f1f3f4; color: #333; padding: 6px 14px; font-size: 12px; }
+    .btn-copy:hover { background: #e0e0e0; }
+    .auth-url-box { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px; word-break: break-all; font-size: 12px; font-family: monospace; margin: 10px 0; max-height: 100px; overflow-y: auto; }
+    .json-textarea { font-family: monospace; font-size: 12px; min-height: 80px; resize: vertical; }
+    .result-highlight { background: #e8f5e9; border: 2px solid #34a853; border-radius: 8px; padding: 14px; margin-top: 12px; }
+    .result-highlight label { color: #2e7d32; font-size: 14px; }
+    .result-highlight .token-value { font-family: monospace; font-size: 13px; word-break: break-all; background: #fff; border-radius: 6px; padding: 10px; margin-top: 6px; border: 1px solid #c8e6c9; }
+    .error-box { background: #fce8e6; border: 1px solid #f5c6c2; border-radius: 8px; padding: 14px; margin-top: 12px; color: #c62828; font-size: 13px; }
+    .divider { border: none; border-top: 1px dashed #ddd; margin: 16px 0; }
+    .toggle-link { color: #1a73e8; cursor: pointer; font-size: 13px; text-decoration: underline; }
+    .collapse-content { display: none; margin-top: 10px; }
+    .collapse-content.show { display: block; }
+    ul.steps { list-style: none; counter-reset: step; }
+    ul.steps li { counter-increment: step; padding: 6px 0 6px 32px; position: relative; font-size: 14px; }
+    ul.steps li::before { content: counter(step); position: absolute; left: 0; top: 6px; width: 22px; height: 22px; border-radius: 50%; background: #e8f0fe; color: #1a73e8; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; }
+    .loading-spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #1a73e8; border-top-color: transparent; border-radius: 50%; animation: spin .6s linear infinite; vertical-align: middle; margin-right: 6px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .mode-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 500; margin-left: 8px; }
+    .mode-auto { background: #e8f5e9; color: #2e7d32; }
+    .mode-manual { background: #fff3e0; color: #e65100; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Google Refresh Token 生成器</h1>
+
+    <!-- Step 0: Prerequisites -->
+    <div class="card">
+      <h2><span class="step-badge">0</span> 前置准备</h2>
+      <ul class="steps">
+        <li>前往 <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a> 创建项目</li>
+        <li>启用 <a href="https://console.cloud.google.com/apis/library/androidpublisher.googleapis.com" target="_blank">Google Play Android Developer API</a></li>
+        <li>创建 <strong>OAuth 2.0 客户端 ID</strong>，应用类型选择 <strong>"Web应用"</strong></li>
+        <li>获取 <code>client_id</code>、<code>client_secret</code> 和已获授权的<strong>重定向 URI</strong></li>
+        <li>将应用发布状态从测试改为正式：<a href="https://console.cloud.google.com/auth/audience" target="_blank">应用发布状态</a></li>
+      </ul>
+    </div>
+
+    <!-- Step 1: Configure -->
+    <div class="card">
+      <h2><span class="step-badge">1</span> 填写配置</h2>
+      <div class="field">
+        <label for="clientId">Client ID</label>
+        <input type="text" id="clientId" placeholder="例如：xxxx.apps.googleusercontent.com">
+      </div>
+      <div class="field">
+        <label for="clientSecret">Client Secret</label>
+        <input type="password" id="clientSecret" placeholder="例如：GOCSPX-xxxx">
+        <div class="hint">客户端密钥，仅用于本地换取 token，不会上传至任何服务器</div>
+      </div>
+      <div class="field">
+        <label for="redirectUri">重定向 URI</label>
+        <input type="text" id="redirectUri" placeholder="例如：https://developers.google.com/oauthplayground">
+        <div class="hint">Google Cloud Console 中已获授权的重定向 URI，需与控制台配置一致</div>
+      </div>
+      <div class="field">
+        <label>授权范围（Scope）</label>
+        <input type="text" id="scopeValue" value="https://www.googleapis.com/auth/androidpublisher" readonly style="background:#f5f7fa; cursor:default;">
+        <div class="hint">固定为 Google Play Android Developer API 所需的 Scope</div>
+      </div>
+    </div>
+
+    <!-- Step 2: Authorize -->
+    <div class="card">
+      <h2><span class="step-badge">2</span> 授权</h2>
+      <p style="font-size:14px; margin-bottom:12px;">点击下方按钮，在浏览器中<span style="color:red;font-weight:bold;">使用<span style="font-size:16px;color:#d9251d;font-weight:900;">公司主体</span>创建的Google账号</span>登录并授权：</p>
+      <button class="btn btn-primary" onclick="generateAuthUrl()">生成授权链接</button>
+      <div id="authUrlSection" style="display:none; margin-top:14px;">
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <span style="font-size:14px; font-weight:500;">授权链接：</span>
+          <button class="btn btn-copy" onclick="copyText('authUrlText')">复制</button>
+          <a id="authUrlLink" href="#" target="_blank" class="btn btn-primary" style="text-decoration:none; font-size:13px; padding:6px 14px;">打开链接</a>
+        </div>
+        <div class="auth-url-box" id="authUrlText"></div>
+        <div class="hint">授权后，浏览器会跳转到你配置的重定向 URI（页面可能报错，这是正常的），请从地址栏复制完整的 URL</div>
+      </div>
+    </div>
+
+    <!-- Step 3: Exchange -->
+    <div class="card">
+      <h2>
+        <span class="step-badge">3</span> 换取 Refresh Token
+        <span id="modeTag" class="mode-tag" style="display:none;"></span>
+      </h2>
+      <p style="font-size:14px; margin-bottom:12px;">将授权后浏览器地址栏的完整 URL 粘贴到下方：</p>
+      <div class="field">
+        <label for="redirectUrl">重定向 URL（从浏览器地址栏复制）</label>
+        <input type="text" id="redirectUrl" placeholder="https://xxx/?code=4/0AXXXX&scope=...">
+      </div>
+      <button class="btn btn-success" id="exchangeBtn" onclick="exchangeToken()">换取 Token</button>
+
+      <!-- 自动模式 (Python 服务器可用时) -->
+      <div id="autoSection" style="display:none; margin-top:16px;">
+        <div id="autoLoading" style="margin-top:12px;">
+          <p style="font-size:14px; color:#1a73e8;"><span class="loading-spinner"></span>正在换取 Token，请稍候...</p>
+        </div>
+        <div id="autoSuccess" style="display:none;">
+          <div class="result-highlight">
+            <label>Refresh Token</label>
+            <div class="token-value" id="refreshTokenValue"></div>
+            <button class="btn btn-success" style="margin-top:10px;" onclick="copyElementText('refreshTokenValue')">复制 Refresh Token</button>
+          </div>
+        </div>
+        <div id="autoError" style="display:none; margin-top:12px;">
+          <div class="error-box">
+            <strong>错误信息：</strong>
+            <div id="autoErrorMessage" style="margin-top:4px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 手动模式 (无 Python 服务器时回退) -->
+      <div id="manualSection" style="display:none; margin-top:16px;">
+        <hr class="divider">
+        <p style="font-size:14px; font-weight:500; margin-bottom:8px;">未检测到本地服务，请手动操作：</p>
+        <ul class="steps">
+          <li>点击下方按钮，在<strong>新标签页</strong>中按 <code>Ctrl+A</code> 全选，<code>Ctrl+C</code> 复制</li>
+          <li>回到本页面，粘贴到下方文本框</li>
+        </ul>
+        <div style="margin: 10px 0;">
+          <button class="btn btn-primary" onclick="submitFormPost()">在新标签页中打开 Token 请求</button>
+        </div>
+        <div class="field" style="margin-top:12px;">
+          <label for="jsonResponse">粘贴返回的 JSON 内容</label>
+          <textarea id="jsonResponse" class="json-textarea" rows="4" placeholder='{"access_token": "...", "refresh_token": "1//0xxx...", ...}'></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="parseTokenResult()">解析 Refresh Token</button>
+
+        <div id="parsedResult" style="display:none;">
+          <div class="result-highlight">
+            <label>Refresh Token</label>
+            <div class="token-value" id="parsedTokenValue"></div>
+            <button class="btn btn-success" style="margin-top:10px;" onclick="copyElementText('parsedTokenValue')">复制 Refresh Token</button>
+          </div>
+          <div id="errorResult" style="display:none; margin-top:12px;">
+            <div class="error-box">
+              <strong>错误信息：</strong>
+              <div id="errorMessage" style="margin-top:4px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: History -->
+    <div class="card">
+      <h2><span class="step-badge">4</span> 历史记录</h2>
+      <div id="historyList" style="margin-top:8px;"><div style="color:#888; font-size:13px;">暂无记录</div></div>
+      <button class="btn btn-copy" style="margin-top:8px;" onclick="clearHistory()">清除历史</button>
+    </div>
+  </div>
+
+  <!-- Hidden form (手动模式回退用) -->
+  <form id="tokenForm" method="POST" action="https://oauth2.googleapis.com/token" target="_blank" style="display:none;">
+    <input type="hidden" name="code" id="formCode">
+    <input type="hidden" name="client_id" id="formClientId">
+    <input type="hidden" name="client_secret" id="formClientSecret">
+    <input type="hidden" name="redirect_uri" id="formRedirectUri">
+    <input type="hidden" name="grant_type" value="authorization_code">
+  </form>
+
+  <script>
+    // ============ 检测是否运行在 Python 本地服务器上 ============
+    let hasLocalServer = false;
+    fetch('/api/ping')
+      .then(r => { if (r.ok) { hasLocalServer = true; showModeTag(); } })
+      .catch(() => {});
+
+    function showModeTag() {
+      const tag = document.getElementById('modeTag');
+      if (hasLocalServer) {
+        tag.textContent = '自动模式';
+        tag.className = 'mode-tag mode-auto';
+      } else {
+        tag.textContent = '手动模式';
+        tag.className = 'mode-tag mode-manual';
+      }
+      tag.style.display = 'inline-block';
+    }
+
+    // ============ Step 2: 生成授权链接 ============
+    function generateAuthUrl() {
+      const clientId = document.getElementById('clientId').value.trim();
+      const redirectUri = document.getElementById('redirectUri').value.trim();
+      if (!clientId) { alert('请填写 Client ID'); return; }
+      if (!redirectUri) { alert('请填写重定向 URI'); return; }
+      const scope = 'https://www.googleapis.com/auth/androidpublisher';
+
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        access_type: 'offline',
+        prompt: 'consent',
+        scope: scope,
+      });
+
+      const url = 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+      document.getElementById('authUrlText').textContent = url;
+      document.getElementById('authUrlLink').href = url;
+      document.getElementById('authUrlSection').style.display = 'block';
+    }
+
+    // ============ Step 3: 换取 Token ============
+    function extractCodeFromUrl(url) {
+      try {
+        const u = new URL(url);
+        return u.searchParams.get('code');
+      } catch {
+        const m = url.match(/[?&]code=([^&]+)/);
+        return m ? decodeURIComponent(m[1]) : null;
+      }
+    }
+
+    function exchangeToken() {
+      const url = document.getElementById('redirectUrl').value.trim();
+      const clientId = document.getElementById('clientId').value.trim();
+      const clientSecret = document.getElementById('clientSecret').value.trim();
+      const redirectUri = document.getElementById('redirectUri').value.trim();
+
+      if (!url) { alert('请粘贴重定向 URL'); return; }
+      if (!clientId || !clientSecret || !redirectUri) {
+        alert('请确认 Client ID、Client Secret 和重定向 URI 都已填写'); return;
+      }
+
+      const code = extractCodeFromUrl(url);
+      if (!code) { alert('无法从 URL 中提取 code，请检查 URL 是否完整'); return; }
+
+      if (hasLocalServer) {
+        doAutoExchange(code, clientId, clientSecret, redirectUri);
+      } else {
+        showManualMode(code, clientId, clientSecret, redirectUri);
+      }
+    }
+
+    // ---------- 自动模式：通过 Python API ----------
+    function doAutoExchange(code, clientId, clientSecret, redirectUri) {
+      const section = document.getElementById('autoSection');
+      const loading = document.getElementById('autoLoading');
+      const success = document.getElementById('autoSuccess');
+      const error = document.getElementById('autoError');
+      const btn = document.getElementById('exchangeBtn');
+
+      section.style.display = 'block';
+      document.getElementById('manualSection').style.display = 'none';
+      loading.style.display = 'block';
+      success.style.display = 'none';
+      error.style.display = 'none';
+      btn.disabled = true;
+
+      fetch('/api/exchange', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: redirectUri })
+      })
+      .then(r => r.json())
+      .then(data => {
+        loading.style.display = 'none';
+        btn.disabled = false;
+
+        if (data.error) {
+          error.style.display = 'block';
+          document.getElementById('autoErrorMessage').textContent =
+            data.error + (data.error_description ? ' - ' + data.error_description : '');
+          if (data.error === 'invalid_grant') {
+            document.getElementById('autoErrorMessage').textContent += '\n提示：授权码可能已过期，请重新授权';
+          }
+          return;
+        }
+        if (!data.refresh_token) {
+          error.style.display = 'block';
+          document.getElementById('autoErrorMessage').textContent =
+            '未获取到 refresh_token。可能原因：\n1. 该账号此前已授权过，请先撤销：https://myaccount.google.com/permissions\n2. 重新授权并确保勾选同意';
+          return;
+        }
+
+        success.style.display = 'block';
+        document.getElementById('refreshTokenValue').textContent = data.refresh_token;
+        saveToHistory(data.refresh_token);
+      })
+      .catch(() => {
+        loading.style.display = 'none';
+        btn.disabled = false;
+        hasLocalServer = false;
+        section.style.display = 'none';
+        showManualMode(code, clientId, clientSecret, redirectUri);
+      });
+    }
+
+    // ---------- 手动模式：form POST ----------
+    function showManualMode(code, clientId, clientSecret, redirectUri) {
+      document.getElementById('manualSection').style.display = 'block';
+      document.getElementById('autoSection').style.display = 'none';
+      document.getElementById('formCode').value = code;
+      document.getElementById('formClientId').value = clientId;
+      document.getElementById('formClientSecret').value = clientSecret;
+      document.getElementById('formRedirectUri').value = redirectUri;
+    }
+
+    function submitFormPost() {
+      document.getElementById('tokenForm').submit();
+    }
+
+    function parseTokenResult() {
+      const raw = document.getElementById('jsonResponse').value.trim();
+      if (!raw) { alert('请粘贴返回的 JSON 内容'); return; }
+
+      try {
+        const data = JSON.parse(raw);
+        if (data.error) {
+          document.getElementById('parsedResult').style.display = 'block';
+          document.getElementById('errorResult').style.display = 'block';
+          document.getElementById('errorMessage').textContent =
+            data.error + (data.error_description ? ' - ' + data.error_description : '');
+          if (data.error === 'invalid_grant') {
+            document.getElementById('errorMessage').textContent += '\n提示：授权码可能已过期，请重新授权获取新的 code';
+          }
+          return;
+        }
+        if (!data.refresh_token) {
+          document.getElementById('parsedResult').style.display = 'block';
+          document.getElementById('errorResult').style.display = 'block';
+          document.getElementById('errorMessage').textContent =
+            '返回结果中没有 refresh_token。可能原因：\n1. 该账号此前已授权过\n2. 请撤销授权后重试：https://myaccount.google.com/permissions';
+          return;
+        }
+        document.getElementById('parsedResult').style.display = 'block';
+        document.getElementById('errorResult').style.display = 'none';
+        document.getElementById('parsedTokenValue').textContent = data.refresh_token;
+        saveToHistory(data.refresh_token);
+      } catch (e) {
+        alert('JSON 解析失败，请确认粘贴的是完整的返回内容。\n错误：' + e.message);
+      }
+    }
+
+    // ============ 历史记录 ============
+    function saveToHistory(token) {
+      const history = JSON.parse(localStorage.getItem('google_refresh_token_history') || '[]');
+      history.unshift({ token, time: new Date().toLocaleString('zh-CN') });
+      if (history.length > 10) history.length = 10;
+      localStorage.setItem('google_refresh_token_history', JSON.stringify(history));
+      loadHistory();
+    }
+
+    function loadHistory() {
+      const list = document.getElementById('historyList');
+      const history = JSON.parse(localStorage.getItem('google_refresh_token_history') || '[]');
+      if (history.length === 0) {
+        list.innerHTML = '<div style="color:#888; font-size:13px;">暂无记录</div>';
+        return;
+      }
+      list.innerHTML = history.map(item => `
+        <div style="background:#f8f9fa; border-radius:6px; padding:10px; margin-bottom:6px; font-size:12px; position:relative;">
+          <div style="color:#888; margin-bottom:4px;">${item.time}</div>
+          <div style="font-family:monospace; word-break:break-all; padding-right:60px;">${item.token}</div>
+          <button class="btn btn-copy" style="position:absolute; top:10px; right:10px;" onclick="copyStr('${item.token.replace(/'/g, "\\'")}')">复制</button>
+        </div>
+      `).join('');
+    }
+
+    function clearHistory() {
+      localStorage.removeItem('google_refresh_token_history');
+      loadHistory();
+    }
+
+    // ============ 复制工具 ============
+    function copyElementText(elementId) {
+      const el = document.getElementById(elementId);
+      const text = el.textContent || el.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        const original = btn.textContent;
+        btn.textContent = '已复制!';
+        setTimeout(() => btn.textContent = original, 1500);
+      });
+    }
+
+    function copyStr(text) {
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        const original = btn.textContent;
+        btn.textContent = '已复制!';
+        setTimeout(() => btn.textContent = original, 1500);
+      });
+    }
+
+    function copyText(elementId) {
+      let text;
+      const el = document.getElementById(elementId);
+      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+        text = el.value;
+      } else {
+        text = el.textContent || el.innerText;
+      }
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        const original = btn.textContent;
+        btn.textContent = '已复制!';
+        setTimeout(() => btn.textContent = original, 1500);
+      });
+    }
+
+    // 初始化
+    loadHistory();
+    setTimeout(showModeTag, 1000);
+  </script>
+</body>
+</html>

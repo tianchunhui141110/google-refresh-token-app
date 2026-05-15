@@ -1,0 +1,70 @@
+name: Build GoogleRefreshToken
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build Windows exe
+        run: pyinstaller --onefile --windowed --name "GoogleRefreshToken" --add-data "index.html;." main.py
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GoogleRefreshToken-Windows
+          path: dist/GoogleRefreshToken.exe
+
+  build-mac-intel:
+    runs-on: macos-13  # Intel runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build Mac Intel
+        run: pyinstaller --onefile --windowed --name "GoogleRefreshToken-Mac-Intel" --add-data "index.html:." main.py
+
+      - name: Upload Mac Intel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GoogleRefreshToken-Mac-Intel
+          path: dist/GoogleRefreshToken-Mac-Intel
+
+  build-mac-arm:
+    runs-on: macos-14  # M1 runner (Apple Silicon)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build Mac ARM
+        run: pyinstaller --onefile --windowed --name "GoogleRefreshToken-Mac-ARM" --add-data "index.html:." main.py
+
+      - name: Upload Mac ARM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GoogleRefreshToken-Mac-ARM
+          path: dist/GoogleRefreshToken-Mac-ARM

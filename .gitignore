@@ -1,0 +1,23 @@
+# PyInstaller 生成文件
+build/
+dist/
+*.spec
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# 运行时生成的 token 结果
+token-result.json
