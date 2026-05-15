@@ -42,11 +42,16 @@ jobs:
       - name: Build Mac Intel
         run: pyinstaller --onefile --windowed --name "GoogleRefreshToken-Mac-Intel" --add-data "index.html:." main.py
 
+      - name: Make executable and package
+        run: |
+          chmod +x dist/GoogleRefreshToken-Mac-Intel
+          cd dist && tar czf GoogleRefreshToken-Mac-Intel.tar.gz GoogleRefreshToken-Mac-Intel
+
       - name: Upload Mac Intel artifact
         uses: actions/upload-artifact@v4
         with:
           name: GoogleRefreshToken-Mac-Intel
-          path: dist/GoogleRefreshToken-Mac-Intel
+          path: dist/GoogleRefreshToken-Mac-Intel.tar.gz
 
   build-mac-arm:
     runs-on: macos-14  # M1 runner (Apple Silicon)
@@ -63,8 +68,13 @@ jobs:
       - name: Build Mac ARM
         run: pyinstaller --onefile --windowed --name "GoogleRefreshToken-Mac-ARM" --add-data "index.html:." main.py
 
+      - name: Make executable and package
+        run: |
+          chmod +x dist/GoogleRefreshToken-Mac-ARM
+          cd dist && tar czf GoogleRefreshToken-Mac-ARM.tar.gz GoogleRefreshToken-Mac-ARM
+
       - name: Upload Mac ARM artifact
         uses: actions/upload-artifact@v4
         with:
           name: GoogleRefreshToken-Mac-ARM
-          path: dist/GoogleRefreshToken-Mac-ARM
+          path: dist/GoogleRefreshToken-Mac-ARM.tar.gz
