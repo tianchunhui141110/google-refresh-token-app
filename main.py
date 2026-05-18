@@ -17,7 +17,7 @@ import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # ============ 常量 ============
-DEFAULT_PORT = 8089
+DEFAULT_PORT = 19527
 SCOPE = "https://www.googleapis.com/auth/androidpublisher"
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -60,6 +60,9 @@ def get_html_page():
 
 
 # ============ 服务器状态 ============
+ACTUAL_PORT = DEFAULT_PORT  # 运行时更新为实际端口
+
+
 class ServerState:
     """存储授权回调结果"""
     callback_result = None  # None=等待, ("code", code), ("error", msg)
@@ -76,6 +79,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             self._handle_callback()
         elif self.path == "/api/ping":
             self._json_response(200, {"status": "ok"})
+        elif self.path == "/api/config":
+            self._json_response(200, {"port": ACTUAL_PORT})
         elif self.path == "/api/callback-result":
             self._api_callback_result()
         elif self.path == "/shutdown":
@@ -240,8 +245,23 @@ class RequestHandler(BaseHTTPRequestHandler):
 
 
 # ============ 入口 ============
+def find_available_port(start_port, max_tries=20):
+    """从 start_port 开始，寻找可用端口"""
+    import socket
+    for port in range(start_port, start_port + max_tries):
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(("127.0.0.1", port))
+            return port
+        except OSError:
+            continue
+    return start_port  # 都被占用则返回默认值
+
+
 def main():
-    port = DEFAULT_PORT
+    global ACTUAL_PORT
+    port = find_available_port(DEFAULT_PORT)
+    ACTUAL_PORT = port
 
     server = HTTPServer(("127.0.0.1", port), RequestHandler)
     print(f"本地服务器已启动: http://localhost:{port}")

@@ -84,6 +84,7 @@
         <label for="redirectUri">重定向 URI</label>
         <input type="text" id="redirectUri" placeholder="例如：https://developers.google.com/oauthplayground">
         <div class="hint">Google Cloud Console 中已获授权的重定向 URI，需与控制台配置一致</div>
+        <div id="redirectUriHint" class="hint" style="display:none; color:#d9251d; font-weight:bold;"></div>
       </div>
       <div class="field">
         <label>授权范围（Scope）</label>
@@ -194,9 +195,25 @@
   <script>
     // ============ 检测是否运行在 Python 本地服务器上 ============
     let hasLocalServer = false;
+    let serverPort = null;
     fetch('/api/ping')
-      .then(r => { if (r.ok) { hasLocalServer = true; showModeTag(); } })
+      .then(r => { if (r.ok) { hasLocalServer = true; showModeTag(); fetchServerConfig(); } })
       .catch(() => {});
+
+    function fetchServerConfig() {
+      fetch('/api/config')
+        .then(r => r.json())
+        .then(data => {
+          serverPort = data.port;
+          // 自动填充 redirect_uri 提示
+          const hint = document.getElementById('redirectUriHint');
+          if (hint) {
+            hint.textContent = `当前服务端口: ${serverPort}，redirect_uri 应填写: http://localhost:${serverPort}/callback`;
+            hint.style.display = 'block';
+          }
+        })
+        .catch(() => {});
+    }
 
     function showModeTag() {
       const tag = document.getElementById('modeTag');
