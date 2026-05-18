@@ -29,7 +29,7 @@ jobs:
           path: dist/GoogleRefreshToken.exe
 
   build-mac-intel:
-    runs-on: macos-13  # Intel runner
+    runs-on: macos-13  # Intel runner（免费计划排队较慢，耐心等待）
     steps:
       - uses: actions/checkout@v4
 
@@ -40,20 +40,20 @@ jobs:
       - name: Install PyInstaller
         run: pip install pyinstaller
 
-      - name: Build Mac Intel
+      - name: Build Mac Intel .app
         run: |-
-          pyinstaller --onefile --windowed --name "GoogleRefreshToken-Mac-Intel" --add-data "index.html:." main.py
+          pyinstaller --onedir --windowed --name "GoogleRefreshToken" --add-data "index.html:." main.py
 
-      - name: Make executable and package
+      - name: Rename and package
         run: |
-          chmod +x dist/GoogleRefreshToken-Mac-Intel
-          cd dist && tar czf GoogleRefreshToken-Mac-Intel.tar.gz GoogleRefreshToken-Mac-Intel
+          mv "dist/GoogleRefreshToken.app" "dist/GoogleRefreshToken-Intel.app"
+          cd dist && zip -r -q GoogleRefreshToken-Intel.app.zip GoogleRefreshToken-Intel.app
 
       - name: Upload Mac Intel artifact
         uses: actions/upload-artifact@v4
         with:
           name: GoogleRefreshToken-Mac-Intel
-          path: dist/GoogleRefreshToken-Mac-Intel.tar.gz
+          path: dist/GoogleRefreshToken-Intel.app.zip
 
   build-mac-arm:
     runs-on: macos-14  # M1 runner (Apple Silicon)
@@ -67,17 +67,17 @@ jobs:
       - name: Install PyInstaller
         run: pip install pyinstaller
 
-      - name: Build Mac ARM
+      - name: Build Mac ARM .app
         run: |-
-          pyinstaller --onefile --windowed --name "GoogleRefreshToken-Mac-ARM" --add-data "index.html:." main.py
+          pyinstaller --onedir --windowed --name "GoogleRefreshToken" --add-data "index.html:." main.py
 
-      - name: Make executable and package
+      - name: Rename and package
         run: |
-          chmod +x dist/GoogleRefreshToken-Mac-ARM
-          cd dist && tar czf GoogleRefreshToken-Mac-ARM.tar.gz GoogleRefreshToken-Mac-ARM
+          mv "dist/GoogleRefreshToken.app" "dist/GoogleRefreshToken-ARM.app"
+          cd dist && zip -r -q GoogleRefreshToken-ARM.app.zip GoogleRefreshToken-ARM.app
 
       - name: Upload Mac ARM artifact
         uses: actions/upload-artifact@v4
         with:
           name: GoogleRefreshToken-Mac-ARM
-          path: dist/GoogleRefreshToken-Mac-ARM.tar.gz
+          path: dist/GoogleRefreshToken-ARM.app.zip
